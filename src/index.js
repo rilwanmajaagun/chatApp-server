@@ -4,7 +4,6 @@ import 'dotenv/config';
 import socketIo from 'socket.io';
 import app, { logger } from './config';
 import connect2db from './db/setUp';
-import pusher from './config/pusher';
 import socketManager from './socketManager/socket';
 
 const port = 5000 || process.env.PORT;
@@ -14,7 +13,6 @@ const server = app.listen(port, () => {
   logger.info('application listening on port 5000');
 });
 
-pusher.trigger('chat', 'message', { message: 'hello' });
 const io = socketIo(server);
 
 io.on('connection', (socket) => {

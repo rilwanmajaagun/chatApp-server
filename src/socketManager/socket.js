@@ -15,6 +15,24 @@ export default (socket) => {
     // console.log('connected user');
   });
 
+  // is online
+  socket.on('online', (data) => {
+    const { receiverId, senderId } = data;
+    if (connectedUsers[receiverId]) {
+      server.io
+        .to(socket.id)
+        .emit('online', 'online');
+    }
+    if (connectedUsers[senderId]) {
+      server.io
+        .to(connectedUsers[receiverId])
+        .emit('online', 'online');
+    } else {
+      server.io
+        .to(connectedUsers[receiverId])
+        .emit('online', 'Offline');
+    }
+  });
   // fetch all general message
   socket.on('general.room', () => {
     chat.generalMessages()
@@ -27,15 +45,6 @@ export default (socket) => {
   socket.on('new.message', (data) => {
     chat.generalMessage(data);
     server.io.emit('general.message', { ...data, createdAt: momment().format('YYYY-MM-DDTHH:mm:ss') });
-  });
-
-  // show a user is online
-  socket.on('userName.isOnline', (data) => {
-    socket.username = data;
-    socket.broadcast.emit('isOnline', {
-      message: `${socket.username} is online`,
-      user: socket.username,
-    });
   });
 
   // join room
@@ -75,8 +84,78 @@ export default (socket) => {
         date: momment().format('YYYY-MM-DDTHH:mm:ss'),
       });
   });
+
+  // is typing
+  socket.on('typing', (data) => {
+    const { senderId, receiverId, senderName } = data;
+    server.io
+      .to(connectedUsers[receiverId])
+      .emit('typing', { username: senderName, receiverId, senderId });
+  });
+
+  // connecting to webrtc
+  socket.on('videoCall', (room) => {
+    const myRoom = server.io.sockets.adapter.rooms[room] || { length: 0 };
+    const numClients = myRoom.length;
+    if (numClients === 0) {
+      console.log('heerer');
+      socket.join(room);
+      socket.emit('created', room);
+    } else if (numClients === 1) {
+      console.log('herer');
+      socket.join(room);
+      socket.emit('joined', room);
+    } else {
+      console.log(numClients, 'full');
+      socket.emit('full', room);
+    }
+  });
+
+  // disable call button
+  socket.on('disableCreatCall', (data) => {
+    // console.log('hrtdsdtr');
+    socket.emit('disableCreatCall', data);
+  });
+
+  //
+  socket.on('ready', (data) => {
+    server.io
+      .to(data)
+      .emit('ready', data);
+  });
+
+  socket.on('offer', (data) => {
+    server.io
+      .to(data.room)
+      .emit('offer', data);
+  });
+
+  socket.on('answer', (data) => {
+    server.io
+      .to(data.room)
+      .emit('answer', data);
+  });
+
+  socket.on('candidate', (data) => {
+    server.io
+      .to(data.room)
+      .emit('candidate', data.candidate);
+  });
+
+  socket.on('sharingScreen', (data) => {
+    server.io
+      .emit('sharingScreen', data);
+  });
+
   // disconnect
   socket.on('disconnect', () => {
-    console.log('user is disconnected');
+    const keys = Object.keys(connectedUsers).find((k) => connectedUsers[k] === socket.id);
+    delete connectedUsers[keys];
+    // const users = Object.keys(connectedUsers);
+    // users.forEach((id) => {
+    //   server.io
+    //     .to(id).emit('online', 'offline');
+    // });
+    socket.emit('online', { senderId: keys });
   });
 };

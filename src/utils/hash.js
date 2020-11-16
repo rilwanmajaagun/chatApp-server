@@ -19,7 +19,7 @@ export default {
       id,
       email,
       username,
-    }, key, { expiresIn: '2h' });
+    }, key, { expiresIn: '24h' });
     return token;
   },
   verifyToken: async (token) => {
